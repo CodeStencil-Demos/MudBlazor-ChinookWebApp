@@ -1,0 +1,179 @@
+@using Application.DTOs
+@using Presentation.Shared
+@inject ISnackbar Snackbar
+
+<MudDialogProvider />
+<MudDialog>
+    <DialogContent>
+        <MudContainer MaxWidth="MaxWidth.Small" Class="pa-4">
+            <EditForm Model="InvoiceModel" OnValidSubmit="SubmitForm">
+                <DataAnnotationsValidator />
+                <MudAutocomplete T="CustomerDto"
+                                Label="Customer"
+                                @bind-Value="SelectedCustomer"
+                                SearchFunc="@SearchCustomers"
+                                ToStringFunc="@(x => x?.FirstName)"
+                                MaxItems="@CountTotalCustomers()"
+                                Required="true"
+                                RequiredError="Please select a customer "
+                                Clearable="true"
+                                Class="mb-4" />
+                <MudDatePicker @bind-Date="InvoiceModel.InvoiceDate"
+                                Label="Invoice Date"
+                                Required="true"
+                                RequiredError="Please select a Invoice Date"
+                                Class="mb-4" />
+                <MudTextField @bind-Value="InvoiceModel.BillingAddress"
+                                Label="Billing Address"
+                                Required="true"
+                                RequiredError="Please enter a Billing Address"
+                                Class="mb-4" />
+                <MudTextField @bind-Value="InvoiceModel.BillingCity"
+                                Label="Billing City"
+                                Required="true"
+                                RequiredError="Please enter a Billing City"
+                                Class="mb-4" />
+                <MudTextField @bind-Value="InvoiceModel.BillingState"
+                                Label="Billing State"
+                                Required="true"
+                                RequiredError="Please enter a Billing State"
+                                Class="mb-4" />
+                <MudTextField @bind-Value="InvoiceModel.BillingCountry"
+                                Label="Billing Country"
+                                Required="true"
+                                RequiredError="Please enter a Billing Country"
+                                Class="mb-4" />
+                <MudTextField @bind-Value="InvoiceModel.BillingPostalCode"
+                                Label="Billing Postal Code"
+                                Required="true"
+                                RequiredError="Please enter a Billing Postal Code"
+                                Class="mb-4" />
+                <MudNumericField @bind-Value="InvoiceModel.Total"
+                                Label="Total"
+                                Required="true"
+                                RequiredError="Please enter a Total"
+                                Class="mb-4" />
+
+                <DialogActions OnCancel="Cancel" 
+                               OnSave="HandleSave"
+                               IsEditing="IsEditing" 
+                               IsDisabled="false" />
+            </EditForm>
+        </MudContainer>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance? MudDialog { get; set; }
+    [Parameter] public List<CustomerDto> Customers { get; set; } = [];
+        [Parameter] public bool IsEditing { get; set; }
+    [Parameter] public InvoiceDto? Invoice { get; set; }
+
+
+    private InvoiceDto? InvoiceModel { get; set; }  = new();
+    private CustomerDto? _selectedCustomer;
+
+        
+    private CustomerDto? SelectedCustomer
+    {
+        get => _selectedCustomer;
+        set
+        {
+            _selectedCustomer = value;
+            if (value != null)
+            {
+                InvoiceModel!.CustomerId = value.CustomerId;
+            }
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        if (!IsEditing || Invoice == null) return;
+        InvoiceModel = new InvoiceDto
+        {
+            InvoiceId = Invoice.InvoiceId,
+            CustomerId = Invoice.CustomerId,
+            InvoiceDate = Invoice.InvoiceDate,
+            BillingAddress = Invoice.BillingAddress,
+            BillingCity = Invoice.BillingCity,
+            BillingState = Invoice.BillingState,
+            BillingCountry = Invoice.BillingCountry,
+            BillingPostalCode = Invoice.BillingPostalCode,
+            Total = Invoice.Total,
+        };
+        SelectedCustomer = Customers.FirstOrDefault(lookup => lookup.CustomerId == Invoice.CustomerId);
+
+    }
+        
+    private async Task<IEnumerable<CustomerDto>> SearchCustomers(string value, CancellationToken cancellationToken)
+    {
+        await Task.Delay(1, cancellationToken);
+        return Customers.Where(x =>
+                string.IsNullOrEmpty(value) ||
+                x.FirstName.Contains(value, StringComparison.InvariantCultureIgnoreCase)
+        ).OrderBy(x => x.FirstName);
+    }
+    
+
+ 
+    private int CountTotalCustomers() => Customers.Count;
+
+
+    private bool IsValid() =>
+        InvoiceModel.CustomerId > 0;
+
+    private void ShowValidationErrors()
+    {
+        var errors = new List<string>();
+        if (InvoiceModel.CustomerId <= 0) 
+            errors.Add("CustomerId must be greater than 0");
+
+
+        if (errors.Any())
+        {
+            var errorMessage = string.Join(", ", errors);
+            Snackbar.Add($"Validation failed: {errorMessage}", Severity.Error);
+        }
+    }
+
+         
+    private Task SubmitForm()
+    {
+        if (!IsValid())
+            return Task.CompletedTask;
+    
+        var invoiceToSave = new InvoiceDto
+        {
+            InvoiceId = IsEditing ? InvoiceModel.InvoiceId : 0,
+            CustomerId = SelectedCustomer?.CustomerId ?? InvoiceModel.CustomerId,
+            InvoiceDate = InvoiceModel.InvoiceDate,
+            BillingAddress = InvoiceModel!.BillingAddress,
+            BillingCity = InvoiceModel!.BillingCity,
+            BillingState = InvoiceModel!.BillingState,
+            BillingCountry = InvoiceModel!.BillingCountry,
+            BillingPostalCode = InvoiceModel!.BillingPostalCode,
+            Total = InvoiceModel.Total
+        };
+    
+        MudDialog?.Close(DialogResult.Ok(invoiceToSave));
+        return Task.CompletedTask;
+    }
+
+
+
+private Task HandleSave()
+    {
+        if (!IsValid())
+        {
+            ShowValidationErrors();
+            return Task.CompletedTask;
+        }
+
+        return SubmitForm();
+    }
+
+    private void Cancel() => MudDialog?.Close(DialogResult.Cancel());
+}
+

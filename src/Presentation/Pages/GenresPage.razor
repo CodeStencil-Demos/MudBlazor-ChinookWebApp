@@ -1,0 +1,229 @@
+@page "/genres"
+@using Microsoft.AspNetCore.Authorization
+@using Application.DTOs
+@attribute [Authorize]
+<PageTitle>Genre</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudPaper Class="pa-4">
+        <MudGrid>
+            <MudItem xs="6">
+                <MudText Typo="Typo.h5">Genres</MudText>
+            </MudItem>
+            <MudItem xs="6" Class="d-flex justify-end">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="async () => await HandleNewClick()"
+                           StartIcon="@Icons.Material.Filled.Add">
+                    New Genre
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <MudTextField @bind-Value="_searchTerm"
+                      Label="Search"
+                      Class="mt-4"
+                      Immediate="true"
+                      DebounceInterval="500"
+                      OnDebounceIntervalElapsed="@(async () => await HandleSearch(_searchTerm))"
+                      Placeholder="Search genres..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search" />
+
+    <div class="table-responsive">
+        <MudTable Items="@_items"
+                  Dense="true"
+                  Hover="true"
+                  Bordered="true"
+                  Striped="true"
+                  Loading="@_isLoading"
+                  SortLabel="Sort by"
+                  T="GenreDto"
+                  ServerData="@(new Func<TableState, CancellationToken, Task<TableData<GenreDto>>>(Reload))"
+                  OnRowClick="HandleRowClick"
+                  RowStyleFunc="@((item, i) => "cursor-pointer")"
+                  @ref="_tableRef">
+
+            <HeaderContent>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Name" T="GenreDto">
+                    Name
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+
+                <MudTd>
+                    <MudStack Row="true">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       OnClick="@(() => HandleEditClick(context))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       OnClick="@(() => HandleDeleteClick(context))" />
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText>No genres found</MudText>
+            </NoRecordsContent>
+            <LoadingContent>
+                <MudText>Loading...</MudText>
+            </LoadingContent>
+        </MudTable>
+    </div>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private IEnumerable<GenreDto>? _items;
+    private string _searchTerm = "";
+    private bool _isLoading;
+    private MudTable<GenreDto> _tableRef = null!;
+
+            
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to initialize: {ex.Message}", Severity.Error);
+        }
+    }
+
+
+
+    private async Task<TableData<GenreDto>> Reload(TableState state, CancellationToken cancellationToken)
+    {
+        return await TableHelpers.ServerReload<GenreDto>(
+            state,
+            cancellationToken,
+            _searchTerm,
+            parameters => GenreService.GetPagedAsync(parameters),
+            "Failed to load genres",
+            Snackbar,
+            isLoading => _isLoading = isLoading);
+    }
+    
+    //Click
+    private void HandleRowClick(TableRowClickEventArgs<GenreDto> args)
+    {
+        if (args.Item == null) return;
+        _ = HandleEditClick(args.Item);
+    }
+
+    //Search
+    private async Task HandleSearch(string? value)
+    {
+        _searchTerm = value ?? "";
+        await _tableRef.ReloadServerData();
+    }
+
+    //Delete
+    private async Task HandleDeleteClick(GenreDto genre)
+    {
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var result = await DialogService.ShowMessageBox(
+            "Delete Genre",
+            $"Are you sure you want to delete '{genre.GenreId}'?",
+            yesText: "Delete",
+            cancelText: "Cancel",
+            options: options);
+
+        if (result ?? false)
+        {
+            try
+            {
+                await GenreService.DeleteAsync(genre.GenreId);
+                await _tableRef.ReloadServerData();
+                Snackbar.Add("Genre deleted successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to delete genre: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    //New
+    private async Task HandleNewClick()
+    {
+        var parameters = new DialogParameters
+        {
+            { "IsEditing", false },
+            { "Genre", null }
+
+
+            //{ "Genre", null}   
+
+        };
+
+
+        var options = new DialogOptions()
+            {
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true,
+                CloseButton = true,
+            };
+
+        var dialogRes = await (await DialogService.ShowAsync<GenreDialog>("New Genre", parameters, options)).Result;
+
+        if (!dialogRes.Canceled)
+        {
+            try
+            {
+                if (dialogRes.Data is GenreDto genreToSave) 
+                    await GenreService.CreateAsync(genreToSave);
+                await _tableRef.ReloadServerData();
+                Snackbar.Add("Genre created successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to create genre: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    //Edit
+    private async Task HandleEditClick(GenreDto genre)
+    {
+        var parameters = new DialogParameters
+        {
+            { "IsEditing", true },
+            { "Genre", genre }
+
+
+            //{ "Genre", genre}  
+
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+        var dialog = await DialogService.ShowAsync<GenreDialog>("Edit Genre", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                if (result.Data is GenreDto genreToSave) 
+                    await GenreService.UpdateAsync(genreToSave);
+                await _tableRef.ReloadServerData();
+                Snackbar.Add("Genre updated successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to update Genre: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

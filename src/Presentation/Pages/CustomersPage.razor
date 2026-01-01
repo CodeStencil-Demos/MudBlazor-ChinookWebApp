@@ -1,0 +1,304 @@
+@page "/customers"
+@using Microsoft.AspNetCore.Authorization
+@using Application.DTOs
+@attribute [Authorize]
+<PageTitle>Customer</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudPaper Class="pa-4">
+        <MudGrid>
+            <MudItem xs="6">
+                <MudText Typo="Typo.h5">Customers</MudText>
+            </MudItem>
+            <MudItem xs="6" Class="d-flex justify-end">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="async () => await HandleNewClick()"
+                           StartIcon="@Icons.Material.Filled.Add">
+                    New Customer
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <MudTextField @bind-Value="_searchTerm"
+                      Label="Search"
+                      Class="mt-4"
+                      Immediate="true"
+                      DebounceInterval="500"
+                      OnDebounceIntervalElapsed="@(async () => await HandleSearch(_searchTerm))"
+                      Placeholder="Search customers..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search" />
+
+    <div class="table-responsive">
+        <MudTable Items="@_items"
+                  Dense="true"
+                  Hover="true"
+                  Bordered="true"
+                  Striped="true"
+                  Loading="@_isLoading"
+                  SortLabel="Sort by"
+                  T="CustomerDto"
+                  ServerData="@(new Func<TableState, CancellationToken, Task<TableData<CustomerDto>>>(Reload))"
+                  OnRowClick="HandleRowClick"
+                  RowStyleFunc="@((item, i) => "cursor-pointer")"
+                  @ref="_tableRef">
+
+            <HeaderContent>
+                <MudTh>
+                <MudTableSortLabel SortLabel="FirstName" T="CustomerDto">
+                    First Name
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="LastName" T="CustomerDto">
+                    Last Name
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Company" T="CustomerDto">
+                    Company
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Address" T="CustomerDto">
+                    Address
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="City" T="CustomerDto">
+                    City
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="State" T="CustomerDto">
+                    State
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Country" T="CustomerDto">
+                    Country
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="PostalCode" T="CustomerDto">
+                    Postal Code
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Phone" T="CustomerDto">
+                    Phone
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Fax" T="CustomerDto">
+                    Fax
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Email" T="CustomerDto">
+                    Email
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="SupportRepId" T="CustomerDto">
+                    Support Rep 
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+
+            <RowTemplate>
+                <MudTd DataLabel="First Name">@context.FirstName</MudTd>
+                <MudTd DataLabel="Last Name">@context.LastName</MudTd>
+                <MudTd DataLabel="Company">@context.Company</MudTd>
+                <MudTd DataLabel="Address">@context.Address</MudTd>
+                <MudTd DataLabel="City">@context.City</MudTd>
+                <MudTd DataLabel="State">@context.State</MudTd>
+                <MudTd DataLabel="Country">@context.Country</MudTd>
+                <MudTd DataLabel="Postal Code">@context.PostalCode</MudTd>
+                <MudTd DataLabel="Phone">@context.Phone</MudTd>
+                <MudTd DataLabel="Fax">@context.Fax</MudTd>
+                <MudTd DataLabel="Email">@context.Email</MudTd>
+                <MudTd DataLabel="Support Rep ">@(_employees.FirstOrDefault(e => e.EmployeeId == context.SupportRepId)?.LastName ?? string.Empty)</MudTd>
+
+                <MudTd>
+                    <MudStack Row="true">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       OnClick="@(() => HandleEditClick(context))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       OnClick="@(() => HandleDeleteClick(context))" />
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText>No customers found</MudText>
+            </NoRecordsContent>
+            <LoadingContent>
+                <MudText>Loading...</MudText>
+            </LoadingContent>
+        </MudTable>
+    </div>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private IEnumerable<CustomerDto>? _items;
+    private string _searchTerm = "";
+    private bool _isLoading;
+    private MudTable<CustomerDto> _tableRef = null!;
+    private List<EmployeeDto> _employees = [];
+            
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadEmployees();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to initialize: {ex.Message}", Severity.Error);
+        }
+    }
+
+            
+    private async Task LoadEmployees()
+    {
+        _employees = (await EmployeeService.GetAllAsync()).ToList();
+    }
+
+
+
+    private async Task<TableData<CustomerDto>> Reload(TableState state, CancellationToken cancellationToken)
+    {
+        return await TableHelpers.ServerReload<CustomerDto>(
+            state,
+            cancellationToken,
+            _searchTerm,
+            parameters => CustomerService.GetPagedAsync(parameters),
+            "Failed to load customers",
+            Snackbar,
+            isLoading => _isLoading = isLoading);
+    }
+    
+    //Click
+    private void HandleRowClick(TableRowClickEventArgs<CustomerDto> args)
+    {
+        if (args.Item == null) return;
+        _ = HandleEditClick(args.Item);
+    }
+
+    //Search
+    private async Task HandleSearch(string? value)
+    {
+        _searchTerm = value ?? "";
+        await _tableRef.ReloadServerData();
+    }
+
+    //Delete
+    private async Task HandleDeleteClick(CustomerDto customer)
+    {
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var result = await DialogService.ShowMessageBox(
+            "Delete Customer",
+            $"Are you sure you want to delete '{customer.CustomerId}'?",
+            yesText: "Delete",
+            cancelText: "Cancel",
+            options: options);
+
+        if (result ?? false)
+        {
+            try
+            {
+                await CustomerService.DeleteAsync(customer.CustomerId);
+                await _tableRef.ReloadServerData();
+                Snackbar.Add("Customer deleted successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to delete customer: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    //New
+    private async Task HandleNewClick()
+    {
+        var parameters = new DialogParameters
+        {
+            { "IsEditing", false },
+            { "Customer", null },
+            { "Employees", _employees }
+
+
+            //{ "Customer", null}  ,
+            //{ "Employees",_employees}  
+        };
+
+
+        var options = new DialogOptions()
+            {
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true,
+                CloseButton = true,
+            };
+
+        var dialogRes = await (await DialogService.ShowAsync<CustomerDialog>("New Customer", parameters, options)).Result;
+
+        if (!dialogRes.Canceled)
+        {
+            try
+            {
+                if (dialogRes.Data is CustomerDto customerToSave) 
+                    await CustomerService.CreateAsync(customerToSave);
+                await _tableRef.ReloadServerData();
+                Snackbar.Add("Customer created successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to create customer: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    //Edit
+    private async Task HandleEditClick(CustomerDto customer)
+    {
+        var parameters = new DialogParameters
+        {
+            { "IsEditing", true },
+            { "Customer", customer },
+            { "Employees", _employees }
+
+
+            //{ "Customer", customer} ,
+            //{ "Employees",_employees}  
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+        var dialog = await DialogService.ShowAsync<CustomerDialog>("Edit Customer", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                if (result.Data is CustomerDto customerToSave) 
+                    await CustomerService.UpdateAsync(customerToSave);
+                await _tableRef.ReloadServerData();
+                Snackbar.Add("Customer updated successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to update Customer: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

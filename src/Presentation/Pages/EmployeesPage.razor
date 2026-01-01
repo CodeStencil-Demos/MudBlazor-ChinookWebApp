@@ -1,0 +1,316 @@
+@page "/employees"
+@using Microsoft.AspNetCore.Authorization
+@using Application.DTOs
+@attribute [Authorize]
+<PageTitle>Employee</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudPaper Class="pa-4">
+        <MudGrid>
+            <MudItem xs="6">
+                <MudText Typo="Typo.h5">Employees</MudText>
+            </MudItem>
+            <MudItem xs="6" Class="d-flex justify-end">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="async () => await HandleNewClick()"
+                           StartIcon="@Icons.Material.Filled.Add">
+                    New Employee
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <MudTextField @bind-Value="_searchTerm"
+                      Label="Search"
+                      Class="mt-4"
+                      Immediate="true"
+                      DebounceInterval="500"
+                      OnDebounceIntervalElapsed="@(async () => await HandleSearch(_searchTerm))"
+                      Placeholder="Search employees..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search" />
+
+    <div class="table-responsive">
+        <MudTable Items="@_items"
+                  Dense="true"
+                  Hover="true"
+                  Bordered="true"
+                  Striped="true"
+                  Loading="@_isLoading"
+                  SortLabel="Sort by"
+                  T="EmployeeDto"
+                  ServerData="@(new Func<TableState, CancellationToken, Task<TableData<EmployeeDto>>>(Reload))"
+                  OnRowClick="HandleRowClick"
+                  RowStyleFunc="@((item, i) => "cursor-pointer")"
+                  @ref="_tableRef">
+
+            <HeaderContent>
+                <MudTh>
+                <MudTableSortLabel SortLabel="LastName" T="EmployeeDto">
+                    Last Name
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="FirstName" T="EmployeeDto">
+                    First Name
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Title" T="EmployeeDto">
+                    Title
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="ReportsTo" T="EmployeeDto">
+                    Reports To
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="BirthDate" T="EmployeeDto">
+                    Birth Date
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="HireDate" T="EmployeeDto">
+                    Hire Date
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Address" T="EmployeeDto">
+                    Address
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="City" T="EmployeeDto">
+                    City
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="State" T="EmployeeDto">
+                    State
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Country" T="EmployeeDto">
+                    Country
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="PostalCode" T="EmployeeDto">
+                    Postal Code
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Phone" T="EmployeeDto">
+                    Phone
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Fax" T="EmployeeDto">
+                    Fax
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Email" T="EmployeeDto">
+                    Email
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+
+            <RowTemplate>
+                <MudTd DataLabel="Last Name">@context.LastName</MudTd>
+                <MudTd DataLabel="First Name">@context.FirstName</MudTd>
+                <MudTd DataLabel="Title">@context.Title</MudTd>
+                <MudTd DataLabel="Reports To">@context.ReportsTo</MudTd>
+                <MudTd DataLabel="Birth Date">@context.BirthDate</MudTd>
+                <MudTd DataLabel="Hire Date">@context.HireDate</MudTd>
+                <MudTd DataLabel="Address">@context.Address</MudTd>
+                <MudTd DataLabel="City">@context.City</MudTd>
+                <MudTd DataLabel="State">@context.State</MudTd>
+                <MudTd DataLabel="Country">@context.Country</MudTd>
+                <MudTd DataLabel="Postal Code">@context.PostalCode</MudTd>
+                <MudTd DataLabel="Phone">@context.Phone</MudTd>
+                <MudTd DataLabel="Fax">@context.Fax</MudTd>
+                <MudTd DataLabel="Email">@context.Email</MudTd>
+
+                <MudTd>
+                    <MudStack Row="true">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       OnClick="@(() => HandleEditClick(context))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       OnClick="@(() => HandleDeleteClick(context))" />
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText>No employees found</MudText>
+            </NoRecordsContent>
+            <LoadingContent>
+                <MudText>Loading...</MudText>
+            </LoadingContent>
+        </MudTable>
+    </div>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private IEnumerable<EmployeeDto>? _items;
+    private string _searchTerm = "";
+    private bool _isLoading;
+    private MudTable<EmployeeDto> _tableRef = null!;
+    private List<EmployeeDto> _employees = [];
+            
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadEmployees();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to initialize: {ex.Message}", Severity.Error);
+        }
+    }
+
+            
+    private async Task LoadEmployees()
+    {
+        _employees = (await EmployeeService.GetAllAsync()).ToList();
+    }
+
+
+
+    private async Task<TableData<EmployeeDto>> Reload(TableState state, CancellationToken cancellationToken)
+    {
+        return await TableHelpers.ServerReload<EmployeeDto>(
+            state,
+            cancellationToken,
+            _searchTerm,
+            parameters => EmployeeService.GetPagedAsync(parameters),
+            "Failed to load employees",
+            Snackbar,
+            isLoading => _isLoading = isLoading);
+    }
+    
+    //Click
+    private void HandleRowClick(TableRowClickEventArgs<EmployeeDto> args)
+    {
+        if (args.Item == null) return;
+        _ = HandleEditClick(args.Item);
+    }
+
+    //Search
+    private async Task HandleSearch(string? value)
+    {
+        _searchTerm = value ?? "";
+        await _tableRef.ReloadServerData();
+    }
+
+    //Delete
+    private async Task HandleDeleteClick(EmployeeDto employee)
+    {
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var result = await DialogService.ShowMessageBox(
+            "Delete Employee",
+            $"Are you sure you want to delete '{employee.EmployeeId}'?",
+            yesText: "Delete",
+            cancelText: "Cancel",
+            options: options);
+
+        if (result ?? false)
+        {
+            try
+            {
+                await EmployeeService.DeleteAsync(employee.EmployeeId);
+                await _tableRef.ReloadServerData();
+                Snackbar.Add("Employee deleted successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to delete employee: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    //New
+    private async Task HandleNewClick()
+    {
+        var parameters = new DialogParameters
+        {
+            { "IsEditing", false },
+            { "Employee", null },
+            { "Employees", _employees }
+
+
+            //{ "Employee", null}  ,
+            //{ "[%CS_RELATED_TABLE_LISTS%]",_employees}  
+        };
+
+
+        var options = new DialogOptions()
+            {
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true,
+                CloseButton = true,
+            };
+
+        var dialogRes = await (await DialogService.ShowAsync<EmployeeDialog>("New Employee", parameters, options)).Result;
+
+        if (!dialogRes.Canceled)
+        {
+            try
+            {
+                if (dialogRes.Data is EmployeeDto employeeToSave) 
+                    await EmployeeService.CreateAsync(employeeToSave);
+                await _tableRef.ReloadServerData();
+                Snackbar.Add("Employee created successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to create employee: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    //Edit
+    private async Task HandleEditClick(EmployeeDto employee)
+    {
+        var parameters = new DialogParameters
+        {
+            { "IsEditing", true },
+            { "Employee", employee },
+            { "Employees", _employees }
+
+
+            //{ "Employee", employee} ,
+            //{ "[%CS_RELATED_TABLE_LISTS%]",_employees}  
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+        var dialog = await DialogService.ShowAsync<EmployeeDialog>("Edit Employee", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                if (result.Data is EmployeeDto employeeToSave) 
+                    await EmployeeService.UpdateAsync(employeeToSave);
+                await _tableRef.ReloadServerData();
+                Snackbar.Add("Employee updated successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to update Employee: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

@@ -1,0 +1,213 @@
+@using Application.DTOs
+@using Presentation.Shared
+@inject ISnackbar Snackbar
+
+<MudDialogProvider />
+<MudDialog>
+    <DialogContent>
+        <MudContainer MaxWidth="MaxWidth.Small" Class="pa-4">
+            <EditForm Model="EmployeeModel" OnValidSubmit="SubmitForm">
+                <DataAnnotationsValidator />
+                <MudTextField @bind-Value="EmployeeModel.LastName"
+                                Label="Last Name"
+                                Required="true"
+                                RequiredError="Please enter a Last Name"
+                                Class="mb-4" />
+                <MudTextField @bind-Value="EmployeeModel.FirstName"
+                                Label="First Name"
+                                Required="true"
+                                RequiredError="Please enter a First Name"
+                                Class="mb-4" />
+                <MudTextField @bind-Value="EmployeeModel.Title"
+                                Label="Title"
+                                Required="true"
+                                RequiredError="Please enter a Title"
+                                Class="mb-4" />
+                <MudDatePicker @bind-Date="EmployeeModel.BirthDate"
+                                Label="Birth Date"
+                                Required="true"
+                                RequiredError="Please select a Birth Date"
+                                Class="mb-4" />
+                <MudDatePicker @bind-Date="EmployeeModel.HireDate"
+                                Label="Hire Date"
+                                Required="true"
+                                RequiredError="Please select a Hire Date"
+                                Class="mb-4" />
+                <MudTextField @bind-Value="EmployeeModel.Address"
+                                Label="Address"
+                                Required="true"
+                                RequiredError="Please enter a Address"
+                                Class="mb-4" />
+                <MudTextField @bind-Value="EmployeeModel.City"
+                                Label="City"
+                                Required="true"
+                                RequiredError="Please enter a City"
+                                Class="mb-4" />
+                <MudTextField @bind-Value="EmployeeModel.State"
+                                Label="State"
+                                Required="true"
+                                RequiredError="Please enter a State"
+                                Class="mb-4" />
+                <MudTextField @bind-Value="EmployeeModel.Country"
+                                Label="Country"
+                                Required="true"
+                                RequiredError="Please enter a Country"
+                                Class="mb-4" />
+                <MudTextField @bind-Value="EmployeeModel.PostalCode"
+                                Label="Postal Code"
+                                Required="true"
+                                RequiredError="Please enter a Postal Code"
+                                Class="mb-4" />
+                <MudTextField @bind-Value="EmployeeModel.Phone"
+                                Label="Phone"
+                                Required="true"
+                                RequiredError="Please enter a Phone"
+                                Class="mb-4" />
+                <MudTextField @bind-Value="EmployeeModel.Fax"
+                                Label="Fax"
+                                Required="true"
+                                RequiredError="Please enter a Fax"
+                                Class="mb-4" />
+                <MudTextField @bind-Value="EmployeeModel.Email"
+                                Label="Email"
+                                Required="true"
+                                RequiredError="Please enter a Email"
+                                Class="mb-4" />
+
+                <DialogActions OnCancel="Cancel" 
+                               OnSave="HandleSave"
+                               IsEditing="IsEditing" 
+                               IsDisabled="false" />
+            </EditForm>
+        </MudContainer>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance? MudDialog { get; set; }
+    [Parameter] public List<EmployeeDto> Employees { get; set; } = [];
+        [Parameter] public bool IsEditing { get; set; }
+    [Parameter] public EmployeeDto? Employee { get; set; }
+
+
+    private EmployeeDto? EmployeeModel { get; set; }  = new();
+    private EmployeeDto? _selectedEmployee;
+
+        
+    private EmployeeDto? SelectedEmployee
+    {
+        get => _selectedEmployee;
+        set
+        {
+            _selectedEmployee = value;
+            if (value != null)
+            {
+                EmployeeModel!.ReportsTo = value.EmployeeId;
+            }
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        if (!IsEditing || Employee == null) return;
+        EmployeeModel = new EmployeeDto
+        {
+            EmployeeId = Employee.EmployeeId,
+            LastName = Employee.LastName,
+            FirstName = Employee.FirstName,
+            Title = Employee.Title,
+            ReportsTo = Employee.ReportsTo,
+            BirthDate = Employee.BirthDate,
+            HireDate = Employee.HireDate,
+            Address = Employee.Address,
+            City = Employee.City,
+            State = Employee.State,
+            Country = Employee.Country,
+            PostalCode = Employee.PostalCode,
+            Phone = Employee.Phone,
+            Fax = Employee.Fax,
+            Email = Employee.Email,
+        };
+        SelectedEmployee = Employees.FirstOrDefault(lookup => lookup.EmployeeId == Employee.ReportsTo);
+
+    }
+        
+    private async Task<IEnumerable<EmployeeDto>> SearchEmployees(string value, CancellationToken cancellationToken)
+    {
+        await Task.Delay(1, cancellationToken);
+        return Employees.Where(x =>
+                string.IsNullOrEmpty(value) ||
+                x.LastName.Contains(value, StringComparison.InvariantCultureIgnoreCase)
+        ).OrderBy(x => x.LastName);
+    }
+    
+
+ 
+    private int CountTotalEmployees() => Employees.Count;
+
+
+    private bool IsValid() =>
+        !string.IsNullOrWhiteSpace(EmployeeModel.LastName?.Trim()) &&
+            !string.IsNullOrWhiteSpace(EmployeeModel.FirstName?.Trim());
+
+    private void ShowValidationErrors()
+    {
+        var errors = new List<string>();
+                if (string.IsNullOrWhiteSpace(EmployeeModel.LastName?.Trim())) 
+            errors.Add("LastName is required and cannot be empty.");
+        if (string.IsNullOrWhiteSpace(EmployeeModel.FirstName?.Trim())) 
+            errors.Add("FirstName is required and cannot be empty.");
+
+        if (errors.Any())
+        {
+            var errorMessage = string.Join(", ", errors);
+            Snackbar.Add($"Validation failed: {errorMessage}", Severity.Error);
+        }
+    }
+
+         
+    private Task SubmitForm()
+    {
+        if (!IsValid())
+            return Task.CompletedTask;
+    
+        var employeeToSave = new EmployeeDto
+        {
+            EmployeeId = IsEditing ? EmployeeModel.EmployeeId : 0,
+            LastName = EmployeeModel!.LastName,
+            FirstName = EmployeeModel!.FirstName,
+            Title = EmployeeModel!.Title,
+            ReportsTo = SelectedEmployee?.EmployeeId ?? EmployeeModel.ReportsTo,
+            BirthDate = EmployeeModel.BirthDate,
+            HireDate = EmployeeModel.HireDate,
+            Address = EmployeeModel!.Address,
+            City = EmployeeModel!.City,
+            State = EmployeeModel!.State,
+            Country = EmployeeModel!.Country,
+            PostalCode = EmployeeModel!.PostalCode,
+            Phone = EmployeeModel!.Phone,
+            Fax = EmployeeModel!.Fax,
+            Email = EmployeeModel!.Email
+        };
+    
+        MudDialog?.Close(DialogResult.Ok(employeeToSave));
+        return Task.CompletedTask;
+    }
+
+
+
+private Task HandleSave()
+    {
+        if (!IsValid())
+        {
+            ShowValidationErrors();
+            return Task.CompletedTask;
+        }
+
+        return SubmitForm();
+    }
+
+    private void Cancel() => MudDialog?.Close(DialogResult.Cancel());
+}
+

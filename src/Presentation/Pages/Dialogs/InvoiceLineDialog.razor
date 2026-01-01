@@ -1,0 +1,190 @@
+@using Application.DTOs
+@using Presentation.Shared
+@inject ISnackbar Snackbar
+
+<MudDialogProvider />
+<MudDialog>
+    <DialogContent>
+        <MudContainer MaxWidth="MaxWidth.Small" Class="pa-4">
+            <EditForm Model="InvoiceLineModel" OnValidSubmit="SubmitForm">
+                <DataAnnotationsValidator />
+                <MudAutocomplete T="InvoiceDto"
+                                Label="Invoice"
+                                @bind-Value="SelectedInvoice"
+                                SearchFunc="@SearchInvoices"
+                                ToStringFunc="@(x => x?.BillingAddress)"
+                                MaxItems="@CountTotalInvoices()"
+                                Required="true"
+                                RequiredError="Please select a invoice "
+                                Clearable="true"
+                                Class="mb-4" />
+                <MudAutocomplete T="TrackDto"
+                                Label="Track"
+                                @bind-Value="SelectedTrack"
+                                SearchFunc="@SearchTracks"
+                                ToStringFunc="@(x => x?.Name)"
+                                MaxItems="@CountTotalTracks()"
+                                Required="true"
+                                RequiredError="Please select a track "
+                                Clearable="true"
+                                Class="mb-4" />
+                <MudNumericField @bind-Value="InvoiceLineModel.UnitPrice"
+                                Label="Unit Price"
+                                Required="true"
+                                RequiredError="Please enter a Unit Price"
+                                Class="mb-4" />
+                <MudNumericField @bind-Value="InvoiceLineModel.Quantity"
+                                Label="Quantity"
+                                Required="true"
+                                RequiredError="Please enter a Quantity"
+                                Class="mb-4" />
+
+                <DialogActions OnCancel="Cancel" 
+                               OnSave="HandleSave"
+                               IsEditing="IsEditing" 
+                               IsDisabled="false" />
+            </EditForm>
+        </MudContainer>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance? MudDialog { get; set; }
+    [Parameter] public List<InvoiceDto> Invoices { get; set; } = [];
+    [Parameter] public List<TrackDto> Tracks { get; set; } = [];
+        [Parameter] public bool IsEditing { get; set; }
+    [Parameter] public InvoiceLineDto? InvoiceLine { get; set; }
+
+
+    private InvoiceLineDto? InvoiceLineModel { get; set; }  = new();
+    private InvoiceDto? _selectedInvoice;
+    private TrackDto? _selectedTrack;
+
+        
+    private InvoiceDto? SelectedInvoice
+    {
+        get => _selectedInvoice;
+        set
+        {
+            _selectedInvoice = value;
+            if (value != null)
+            {
+                InvoiceLineModel!.InvoiceId = value.InvoiceId;
+            }
+        }
+    }
+        
+    private TrackDto? SelectedTrack
+    {
+        get => _selectedTrack;
+        set
+        {
+            _selectedTrack = value;
+            if (value != null)
+            {
+                InvoiceLineModel!.TrackId = value.TrackId;
+            }
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        if (!IsEditing || InvoiceLine == null) return;
+        InvoiceLineModel = new InvoiceLineDto
+        {
+            InvoiceLineId = InvoiceLine.InvoiceLineId,
+            InvoiceId = InvoiceLine.InvoiceId,
+            TrackId = InvoiceLine.TrackId,
+            UnitPrice = InvoiceLine.UnitPrice,
+            Quantity = InvoiceLine.Quantity,
+        };
+        SelectedInvoice = Invoices.FirstOrDefault(lookup => lookup.InvoiceId == InvoiceLine.InvoiceId);
+        SelectedTrack = Tracks.FirstOrDefault(lookup => lookup.TrackId == InvoiceLine.TrackId);
+
+    }
+        
+    private async Task<IEnumerable<InvoiceDto>> SearchInvoices(string value, CancellationToken cancellationToken)
+    {
+        await Task.Delay(1, cancellationToken);
+        return Invoices.Where(x =>
+                string.IsNullOrEmpty(value) ||
+                x.BillingAddress.Contains(value, StringComparison.InvariantCultureIgnoreCase)
+        ).OrderBy(x => x.BillingAddress);
+    }
+    
+    private async Task<IEnumerable<TrackDto>> SearchTracks(string value, CancellationToken cancellationToken)
+    {
+        await Task.Delay(1, cancellationToken);
+        return Tracks.Where(x =>
+                string.IsNullOrEmpty(value) ||
+                x.Name.Contains(value, StringComparison.InvariantCultureIgnoreCase)
+        ).OrderBy(x => x.Name);
+    }
+    
+
+ 
+    private int CountTotalInvoices() => Invoices.Count;
+    private int CountTotalTracks() => Tracks.Count;
+
+
+    private bool IsValid() =>
+        InvoiceLineModel.InvoiceId > 0 &&
+            InvoiceLineModel.TrackId > 0 &&
+            InvoiceLineModel.Quantity > 0;
+
+    private void ShowValidationErrors()
+    {
+        var errors = new List<string>();
+        if (InvoiceLineModel.InvoiceId <= 0) 
+            errors.Add("InvoiceId must be greater than 0");
+
+if (InvoiceLineModel.TrackId <= 0) 
+            errors.Add("TrackId must be greater than 0");
+
+if (InvoiceLineModel.Quantity <= 0) 
+            errors.Add("Quantity must be greater than 0");
+
+
+        if (errors.Any())
+        {
+            var errorMessage = string.Join(", ", errors);
+            Snackbar.Add($"Validation failed: {errorMessage}", Severity.Error);
+        }
+    }
+
+         
+    private Task SubmitForm()
+    {
+        if (!IsValid())
+            return Task.CompletedTask;
+    
+        var invoicelineToSave = new InvoiceLineDto
+        {
+            InvoiceLineId = IsEditing ? InvoiceLineModel.InvoiceLineId : 0,
+            InvoiceId = SelectedInvoice?.InvoiceId ?? InvoiceLineModel.InvoiceId,
+            TrackId = SelectedTrack?.TrackId ?? InvoiceLineModel.TrackId,
+            UnitPrice = InvoiceLineModel.UnitPrice,
+            Quantity = InvoiceLineModel.Quantity
+        };
+    
+        MudDialog?.Close(DialogResult.Ok(invoicelineToSave));
+        return Task.CompletedTask;
+    }
+
+
+
+private Task HandleSave()
+    {
+        if (!IsValid())
+        {
+            ShowValidationErrors();
+            return Task.CompletedTask;
+        }
+
+        return SubmitForm();
+    }
+
+    private void Cancel() => MudDialog?.Close(DialogResult.Cancel());
+}
+

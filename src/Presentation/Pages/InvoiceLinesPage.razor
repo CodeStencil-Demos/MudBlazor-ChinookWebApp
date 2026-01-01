@@ -1,0 +1,268 @@
+@page "/invoicelines"
+@using Microsoft.AspNetCore.Authorization
+@using Application.DTOs
+@attribute [Authorize]
+<PageTitle>Invoice line</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudPaper Class="pa-4">
+        <MudGrid>
+            <MudItem xs="6">
+                <MudText Typo="Typo.h5">InvoiceLines</MudText>
+            </MudItem>
+            <MudItem xs="6" Class="d-flex justify-end">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="async () => await HandleNewClick()"
+                           StartIcon="@Icons.Material.Filled.Add">
+                    New InvoiceLine
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <MudTextField @bind-Value="_searchTerm"
+                      Label="Search"
+                      Class="mt-4"
+                      Immediate="true"
+                      DebounceInterval="500"
+                      OnDebounceIntervalElapsed="@(async () => await HandleSearch(_searchTerm))"
+                      Placeholder="Search invoicelines..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search" />
+
+    <div class="table-responsive">
+        <MudTable Items="@_items"
+                  Dense="true"
+                  Hover="true"
+                  Bordered="true"
+                  Striped="true"
+                  Loading="@_isLoading"
+                  SortLabel="Sort by"
+                  T="InvoiceLineDto"
+                  ServerData="@(new Func<TableState, CancellationToken, Task<TableData<InvoiceLineDto>>>(Reload))"
+                  OnRowClick="HandleRowClick"
+                  RowStyleFunc="@((item, i) => "cursor-pointer")"
+                  @ref="_tableRef">
+
+            <HeaderContent>
+                <MudTh>
+                <MudTableSortLabel SortLabel="InvoiceId" T="InvoiceLineDto">
+                    Invoice 
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="TrackId" T="InvoiceLineDto">
+                    Track 
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="UnitPrice" T="InvoiceLineDto">
+                    Unit Price
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Quantity" T="InvoiceLineDto">
+                    Quantity
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+
+            <RowTemplate>
+                <MudTd DataLabel="Invoice ">@(_invoices.FirstOrDefault(i => i.InvoiceId == context.InvoiceId)?.BillingAddress ?? string.Empty)</MudTd>
+                <MudTd DataLabel="Track ">@(_tracks.FirstOrDefault(t => t.TrackId == context.TrackId)?.Name ?? string.Empty)</MudTd>
+                <MudTd DataLabel="Unit Price">@context.UnitPrice</MudTd>
+                <MudTd DataLabel="Quantity">@context.Quantity</MudTd>
+
+                <MudTd>
+                    <MudStack Row="true">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       OnClick="@(() => HandleEditClick(context))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       OnClick="@(() => HandleDeleteClick(context))" />
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText>No invoicelines found</MudText>
+            </NoRecordsContent>
+            <LoadingContent>
+                <MudText>Loading...</MudText>
+            </LoadingContent>
+        </MudTable>
+    </div>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private IEnumerable<InvoiceLineDto>? _items;
+    private string _searchTerm = "";
+    private bool _isLoading;
+    private MudTable<InvoiceLineDto> _tableRef = null!;
+    private List<InvoiceDto> _invoices = []; 
+    private List<TrackDto> _tracks = [];
+            
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadInvoices();
+            await LoadTracks();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to initialize: {ex.Message}", Severity.Error);
+        }
+    }
+
+            
+    private async Task LoadInvoices()
+    {
+        _invoices = (await InvoiceService.GetAllAsync()).ToList();
+    }
+
+        
+    private async Task LoadTracks()
+    {
+        _tracks = (await TrackService.GetAllAsync()).ToList();
+    }
+
+
+
+    private async Task<TableData<InvoiceLineDto>> Reload(TableState state, CancellationToken cancellationToken)
+    {
+        return await TableHelpers.ServerReload<InvoiceLineDto>(
+            state,
+            cancellationToken,
+            _searchTerm,
+            parameters => InvoiceLineService.GetPagedAsync(parameters),
+            "Failed to load invoicelines",
+            Snackbar,
+            isLoading => _isLoading = isLoading);
+    }
+    
+    //Click
+    private void HandleRowClick(TableRowClickEventArgs<InvoiceLineDto> args)
+    {
+        if (args.Item == null) return;
+        _ = HandleEditClick(args.Item);
+    }
+
+    //Search
+    private async Task HandleSearch(string? value)
+    {
+        _searchTerm = value ?? "";
+        await _tableRef.ReloadServerData();
+    }
+
+    //Delete
+    private async Task HandleDeleteClick(InvoiceLineDto invoiceline)
+    {
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var result = await DialogService.ShowMessageBox(
+            "Delete InvoiceLine",
+            $"Are you sure you want to delete '{invoiceline.InvoiceLineId}'?",
+            yesText: "Delete",
+            cancelText: "Cancel",
+            options: options);
+
+        if (result ?? false)
+        {
+            try
+            {
+                await InvoiceLineService.DeleteAsync(invoiceline.InvoiceLineId);
+                await _tableRef.ReloadServerData();
+                Snackbar.Add("InvoiceLine deleted successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to delete invoiceline: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    //New
+    private async Task HandleNewClick()
+    {
+        var parameters = new DialogParameters
+        {
+            { "IsEditing", false },
+            { "InvoiceLine", null },
+            { "Invoices", _invoices },
+            { "Tracks", _tracks }
+
+
+            //{ "InvoiceLine", null}  ,
+            //{ "Invoices",_invoices}  
+            //{ "Tracks",_tracks}  
+        };
+
+
+        var options = new DialogOptions()
+            {
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true,
+                CloseButton = true,
+            };
+
+        var dialogRes = await (await DialogService.ShowAsync<InvoiceLineDialog>("New InvoiceLine", parameters, options)).Result;
+
+        if (!dialogRes.Canceled)
+        {
+            try
+            {
+                if (dialogRes.Data is InvoiceLineDto invoicelineToSave) 
+                    await InvoiceLineService.CreateAsync(invoicelineToSave);
+                await _tableRef.ReloadServerData();
+                Snackbar.Add("InvoiceLine created successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to create invoiceline: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    //Edit
+    private async Task HandleEditClick(InvoiceLineDto invoiceline)
+    {
+        var parameters = new DialogParameters
+        {
+            { "IsEditing", true },
+            { "InvoiceLine", invoiceline },
+            { "Invoices", _invoices },
+            { "Tracks", _tracks }
+
+
+            //{ "InvoiceLine", invoiceline} ,
+            //{ "Invoices",_invoices}  
+            //{ "Tracks",_tracks}  
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+        var dialog = await DialogService.ShowAsync<InvoiceLineDialog>("Edit InvoiceLine", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                if (result.Data is InvoiceLineDto invoicelineToSave) 
+                    await InvoiceLineService.UpdateAsync(invoicelineToSave);
+                await _tableRef.ReloadServerData();
+                Snackbar.Add("InvoiceLine updated successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to update InvoiceLine: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

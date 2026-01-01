@@ -1,0 +1,304 @@
+@page "/tracks"
+@using Microsoft.AspNetCore.Authorization
+@using Application.DTOs
+@attribute [Authorize]
+<PageTitle>Track</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudPaper Class="pa-4">
+        <MudGrid>
+            <MudItem xs="6">
+                <MudText Typo="Typo.h5">Tracks</MudText>
+            </MudItem>
+            <MudItem xs="6" Class="d-flex justify-end">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="async () => await HandleNewClick()"
+                           StartIcon="@Icons.Material.Filled.Add">
+                    New Track
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <MudTextField @bind-Value="_searchTerm"
+                      Label="Search"
+                      Class="mt-4"
+                      Immediate="true"
+                      DebounceInterval="500"
+                      OnDebounceIntervalElapsed="@(async () => await HandleSearch(_searchTerm))"
+                      Placeholder="Search tracks..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search" />
+
+    <div class="table-responsive">
+        <MudTable Items="@_items"
+                  Dense="true"
+                  Hover="true"
+                  Bordered="true"
+                  Striped="true"
+                  Loading="@_isLoading"
+                  SortLabel="Sort by"
+                  T="TrackDto"
+                  ServerData="@(new Func<TableState, CancellationToken, Task<TableData<TrackDto>>>(Reload))"
+                  OnRowClick="HandleRowClick"
+                  RowStyleFunc="@((item, i) => "cursor-pointer")"
+                  @ref="_tableRef">
+
+            <HeaderContent>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Name" T="TrackDto">
+                    Name
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="AlbumId" T="TrackDto">
+                    Album 
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="MediaTypeId" T="TrackDto">
+                    Media Type 
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="GenreId" T="TrackDto">
+                    Genre 
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Composer" T="TrackDto">
+                    Composer
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Milliseconds" T="TrackDto">
+                    Milliseconds
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="Bytes" T="TrackDto">
+                    Bytes
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                <MudTableSortLabel SortLabel="UnitPrice" T="TrackDto">
+                    Unit Price
+                </MudTableSortLabel>
+                </MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd DataLabel="Album ">@(_albums.FirstOrDefault(a => a.AlbumId == context.AlbumId)?.Title ?? string.Empty)</MudTd>
+                <MudTd DataLabel="Media Type ">@(_mediatypes.FirstOrDefault(m => m.MediaTypeId == context.MediaTypeId)?.Name ?? string.Empty)</MudTd>
+                <MudTd DataLabel="Genre ">@(_genres.FirstOrDefault(g => g.GenreId == context.GenreId)?.Name ?? string.Empty)</MudTd>
+                <MudTd DataLabel="Composer">@context.Composer</MudTd>
+                <MudTd DataLabel="Milliseconds">@context.Milliseconds</MudTd>
+                <MudTd DataLabel="Bytes">@context.Bytes</MudTd>
+                <MudTd DataLabel="Unit Price">@context.UnitPrice</MudTd>
+
+                <MudTd>
+                    <MudStack Row="true">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       OnClick="@(() => HandleEditClick(context))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       OnClick="@(() => HandleDeleteClick(context))" />
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText>No tracks found</MudText>
+            </NoRecordsContent>
+            <LoadingContent>
+                <MudText>Loading...</MudText>
+            </LoadingContent>
+        </MudTable>
+    </div>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private IEnumerable<TrackDto>? _items;
+    private string _searchTerm = "";
+    private bool _isLoading;
+    private MudTable<TrackDto> _tableRef = null!;
+    private List<AlbumDto> _albums = []; 
+    private List<MediaTypeDto> _mediatypes = []; 
+    private List<GenreDto> _genres = [];
+            
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadAlbums();
+            await LoadMediaTypes();
+            await LoadGenres();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to initialize: {ex.Message}", Severity.Error);
+        }
+    }
+
+            
+    private async Task LoadAlbums()
+    {
+        _albums = (await AlbumService.GetAllAsync()).ToList();
+    }
+
+        
+    private async Task LoadMediaTypes()
+    {
+        _mediatypes = (await MediaTypeService.GetAllAsync()).ToList();
+    }
+
+        
+    private async Task LoadGenres()
+    {
+        _genres = (await GenreService.GetAllAsync()).ToList();
+    }
+
+
+
+    private async Task<TableData<TrackDto>> Reload(TableState state, CancellationToken cancellationToken)
+    {
+        return await TableHelpers.ServerReload<TrackDto>(
+            state,
+            cancellationToken,
+            _searchTerm,
+            parameters => TrackService.GetPagedAsync(parameters),
+            "Failed to load tracks",
+            Snackbar,
+            isLoading => _isLoading = isLoading);
+    }
+    
+    //Click
+    private void HandleRowClick(TableRowClickEventArgs<TrackDto> args)
+    {
+        if (args.Item == null) return;
+        _ = HandleEditClick(args.Item);
+    }
+
+    //Search
+    private async Task HandleSearch(string? value)
+    {
+        _searchTerm = value ?? "";
+        await _tableRef.ReloadServerData();
+    }
+
+    //Delete
+    private async Task HandleDeleteClick(TrackDto track)
+    {
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var result = await DialogService.ShowMessageBox(
+            "Delete Track",
+            $"Are you sure you want to delete '{track.TrackId}'?",
+            yesText: "Delete",
+            cancelText: "Cancel",
+            options: options);
+
+        if (result ?? false)
+        {
+            try
+            {
+                await TrackService.DeleteAsync(track.TrackId);
+                await _tableRef.ReloadServerData();
+                Snackbar.Add("Track deleted successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to delete track: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    //New
+    private async Task HandleNewClick()
+    {
+        var parameters = new DialogParameters
+        {
+            { "IsEditing", false },
+            { "Track", null },
+            { "Albums", _albums },
+            { "MediaTypes", _mediatypes },
+            { "Genres", _genres }
+
+
+            //{ "Track", null}  ,
+            //{ "Albums",_albums}  
+            //{ "MediaTypes",_mediatypes}  
+            //{ "Genres",_genres}  
+        };
+
+
+        var options = new DialogOptions()
+            {
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true,
+                CloseButton = true,
+            };
+
+        var dialogRes = await (await DialogService.ShowAsync<TrackDialog>("New Track", parameters, options)).Result;
+
+        if (!dialogRes.Canceled)
+        {
+            try
+            {
+                if (dialogRes.Data is TrackDto trackToSave) 
+                    await TrackService.CreateAsync(trackToSave);
+                await _tableRef.ReloadServerData();
+                Snackbar.Add("Track created successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to create track: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    //Edit
+    private async Task HandleEditClick(TrackDto track)
+    {
+        var parameters = new DialogParameters
+        {
+            { "IsEditing", true },
+            { "Track", track },
+            { "Albums", _albums },
+            { "MediaTypes", _mediatypes },
+            { "Genres", _genres }
+
+
+            //{ "Track", track} ,
+            //{ "Albums",_albums}  
+            //{ "MediaTypes",_mediatypes}  
+            //{ "Genres",_genres}  
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+        var dialog = await DialogService.ShowAsync<TrackDialog>("Edit Track", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                if (result.Data is TrackDto trackToSave) 
+                    await TrackService.UpdateAsync(trackToSave);
+                await _tableRef.ReloadServerData();
+                Snackbar.Add("Track updated successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to update Track: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

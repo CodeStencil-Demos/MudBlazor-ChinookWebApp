@@ -1,0 +1,94 @@
+@using Application.DTOs
+@using Presentation.Shared
+@inject ISnackbar Snackbar
+
+<MudDialogProvider />
+<MudDialog>
+    <DialogContent>
+        <MudContainer MaxWidth="MaxWidth.Small" Class="pa-4">
+            <EditForm Model="PlaylistModel" OnValidSubmit="SubmitForm">
+                <DataAnnotationsValidator />
+                <MudTextField @bind-Value="PlaylistModel.Name"
+                                Label="Name"
+                                Required="true"
+                                RequiredError="Please enter a Name"
+                                Class="mb-4" />
+
+                <DialogActions OnCancel="Cancel" 
+                               OnSave="HandleSave"
+                               IsEditing="IsEditing" 
+                               IsDisabled="false" />
+            </EditForm>
+        </MudContainer>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance? MudDialog { get; set; }
+        [Parameter] public bool IsEditing { get; set; }
+    [Parameter] public PlaylistDto? Playlist { get; set; }
+
+
+    private PlaylistDto? PlaylistModel { get; set; }  = new();
+
+    protected override void OnInitialized()
+    {
+        if (!IsEditing || Playlist == null) return;
+        PlaylistModel = new PlaylistDto
+        {
+            PlaylistId = Playlist.PlaylistId,
+            Name = Playlist.Name,
+        };
+
+    }
+        
+
+ 
+
+    private bool IsValid() =>
+        true;
+
+    private void ShowValidationErrors()
+    {
+        var errors = new List<string>();
+        
+        if (errors.Any())
+        {
+            var errorMessage = string.Join(", ", errors);
+            Snackbar.Add($"Validation failed: {errorMessage}", Severity.Error);
+        }
+    }
+
+         
+    private Task SubmitForm()
+    {
+        if (!IsValid())
+            return Task.CompletedTask;
+    
+        var playlistToSave = new PlaylistDto
+        {
+            PlaylistId = IsEditing ? PlaylistModel.PlaylistId : 0,
+            Name = PlaylistModel!.Name
+        };
+    
+        MudDialog?.Close(DialogResult.Ok(playlistToSave));
+        return Task.CompletedTask;
+    }
+
+
+
+private Task HandleSave()
+    {
+        if (!IsValid())
+        {
+            ShowValidationErrors();
+            return Task.CompletedTask;
+        }
+
+        return SubmitForm();
+    }
+
+    private void Cancel() => MudDialog?.Close(DialogResult.Cancel());
+}
+

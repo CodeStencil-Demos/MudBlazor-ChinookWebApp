@@ -1,0 +1,248 @@
+@using Application.DTOs
+@using Presentation.Shared
+@inject ISnackbar Snackbar
+
+<MudDialogProvider />
+<MudDialog>
+    <DialogContent>
+        <MudContainer MaxWidth="MaxWidth.Small" Class="pa-4">
+            <EditForm Model="TrackModel" OnValidSubmit="SubmitForm">
+                <DataAnnotationsValidator />
+                <MudTextField @bind-Value="TrackModel.Name"
+                                Label="Name"
+                                Required="true"
+                                RequiredError="Please enter a Name"
+                                Class="mb-4" />
+                <MudAutocomplete T="AlbumDto"
+                                Label="Album"
+                                @bind-Value="SelectedAlbum"
+                                SearchFunc="@SearchAlbums"
+                                ToStringFunc="@(x => x?.Title)"
+                                MaxItems="@CountTotalAlbums()"
+                                Required="true"
+                                RequiredError="Please select a album "
+                                Clearable="true"
+                                Class="mb-4" />
+                <MudAutocomplete T="MediaTypeDto"
+                                Label="MediaType"
+                                @bind-Value="SelectedMediaType"
+                                SearchFunc="@SearchMediaTypes"
+                                ToStringFunc="@(x => x?.Name)"
+                                MaxItems="@CountTotalMediaTypes()"
+                                Required="true"
+                                RequiredError="Please select a media type "
+                                Clearable="true"
+                                Class="mb-4" />
+                <MudAutocomplete T="GenreDto"
+                                Label="Genre"
+                                @bind-Value="SelectedGenre"
+                                SearchFunc="@SearchGenres"
+                                ToStringFunc="@(x => x?.Name)"
+                                MaxItems="@CountTotalGenres()"
+                                Required="true"
+                                RequiredError="Please select a genre "
+                                Clearable="true"
+                                Class="mb-4" />
+                <MudTextField @bind-Value="TrackModel.Composer"
+                                Label="Composer"
+                                Required="true"
+                                RequiredError="Please enter a Composer"
+                                Class="mb-4" />
+                <MudNumericField @bind-Value="TrackModel.Milliseconds"
+                                Label="Milliseconds"
+                                Required="true"
+                                RequiredError="Please enter a Milliseconds"
+                                Class="mb-4" />
+                <MudNumericField @bind-Value="TrackModel.Bytes"
+                                Label="Bytes"
+                                Required="true"
+                                RequiredError="Please enter a Bytes"
+                                Class="mb-4" />
+                <MudNumericField @bind-Value="TrackModel.UnitPrice"
+                                Label="Unit Price"
+                                Required="true"
+                                RequiredError="Please enter a Unit Price"
+                                Class="mb-4" />
+
+                <DialogActions OnCancel="Cancel" 
+                               OnSave="HandleSave"
+                               IsEditing="IsEditing" 
+                               IsDisabled="false" />
+            </EditForm>
+        </MudContainer>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance? MudDialog { get; set; }
+    [Parameter] public List<AlbumDto> Albums { get; set; } = [];
+    [Parameter] public List<MediaTypeDto> MediaTypes { get; set; } = [];
+    [Parameter] public List<GenreDto> Genres { get; set; } = [];
+        [Parameter] public bool IsEditing { get; set; }
+    [Parameter] public TrackDto? Track { get; set; }
+
+
+    private TrackDto? TrackModel { get; set; }  = new();
+    private AlbumDto? _selectedAlbum;
+    private MediaTypeDto? _selectedMediaType;
+    private GenreDto? _selectedGenre;
+
+        
+    private AlbumDto? SelectedAlbum
+    {
+        get => _selectedAlbum;
+        set
+        {
+            _selectedAlbum = value;
+            if (value != null)
+            {
+                TrackModel!.AlbumId = value.AlbumId;
+            }
+        }
+    }
+        
+    private MediaTypeDto? SelectedMediaType
+    {
+        get => _selectedMediaType;
+        set
+        {
+            _selectedMediaType = value;
+            if (value != null)
+            {
+                TrackModel!.MediaTypeId = value.MediaTypeId;
+            }
+        }
+    }
+        
+    private GenreDto? SelectedGenre
+    {
+        get => _selectedGenre;
+        set
+        {
+            _selectedGenre = value;
+            if (value != null)
+            {
+                TrackModel!.GenreId = value.GenreId;
+            }
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        if (!IsEditing || Track == null) return;
+        TrackModel = new TrackDto
+        {
+            TrackId = Track.TrackId,
+            Name = Track.Name,
+            AlbumId = Track.AlbumId,
+            MediaTypeId = Track.MediaTypeId,
+            GenreId = Track.GenreId,
+            Composer = Track.Composer,
+            Milliseconds = Track.Milliseconds,
+            Bytes = Track.Bytes,
+            UnitPrice = Track.UnitPrice,
+        };
+        SelectedAlbum = Albums.FirstOrDefault(lookup => lookup.AlbumId == Track.AlbumId);
+        SelectedMediaType = MediaTypes.FirstOrDefault(lookup => lookup.MediaTypeId == Track.MediaTypeId);
+        SelectedGenre = Genres.FirstOrDefault(lookup => lookup.GenreId == Track.GenreId);
+
+    }
+        
+    private async Task<IEnumerable<AlbumDto>> SearchAlbums(string value, CancellationToken cancellationToken)
+    {
+        await Task.Delay(1, cancellationToken);
+        return Albums.Where(x =>
+                string.IsNullOrEmpty(value) ||
+                x.Title.Contains(value, StringComparison.InvariantCultureIgnoreCase)
+        ).OrderBy(x => x.Title);
+    }
+    
+    private async Task<IEnumerable<MediaTypeDto>> SearchMediaTypes(string value, CancellationToken cancellationToken)
+    {
+        await Task.Delay(1, cancellationToken);
+        return MediaTypes.Where(x =>
+                string.IsNullOrEmpty(value) ||
+                x.Name.Contains(value, StringComparison.InvariantCultureIgnoreCase)
+        ).OrderBy(x => x.Name);
+    }
+    
+    private async Task<IEnumerable<GenreDto>> SearchGenres(string value, CancellationToken cancellationToken)
+    {
+        await Task.Delay(1, cancellationToken);
+        return Genres.Where(x =>
+                string.IsNullOrEmpty(value) ||
+                x.Name.Contains(value, StringComparison.InvariantCultureIgnoreCase)
+        ).OrderBy(x => x.Name);
+    }
+    
+
+ 
+    private int CountTotalAlbums() => Albums.Count;
+    private int CountTotalMediaTypes() => MediaTypes.Count;
+    private int CountTotalGenres() => Genres.Count;
+
+
+    private bool IsValid() =>
+        !string.IsNullOrWhiteSpace(TrackModel.Name?.Trim()) &&
+            TrackModel.MediaTypeId > 0 &&
+            TrackModel.Milliseconds > 0;
+
+    private void ShowValidationErrors()
+    {
+        var errors = new List<string>();
+                if (string.IsNullOrWhiteSpace(TrackModel.Name?.Trim())) 
+            errors.Add("Name is required and cannot be empty.");
+if (TrackModel.MediaTypeId <= 0) 
+            errors.Add("MediaTypeId must be greater than 0");
+
+if (TrackModel.Milliseconds <= 0) 
+            errors.Add("Milliseconds must be greater than 0");
+
+
+        if (errors.Any())
+        {
+            var errorMessage = string.Join(", ", errors);
+            Snackbar.Add($"Validation failed: {errorMessage}", Severity.Error);
+        }
+    }
+
+         
+    private Task SubmitForm()
+    {
+        if (!IsValid())
+            return Task.CompletedTask;
+    
+        var trackToSave = new TrackDto
+        {
+            TrackId = IsEditing ? TrackModel.TrackId : 0,
+            Name = TrackModel!.Name,
+            AlbumId = SelectedAlbum?.AlbumId ?? TrackModel.AlbumId,
+            MediaTypeId = SelectedMediaType?.MediaTypeId ?? TrackModel.MediaTypeId,
+            GenreId = SelectedGenre?.GenreId ?? TrackModel.GenreId,
+            Composer = TrackModel!.Composer,
+            Milliseconds = TrackModel.Milliseconds,
+            Bytes = TrackModel.Bytes,
+            UnitPrice = TrackModel.UnitPrice
+        };
+    
+        MudDialog?.Close(DialogResult.Ok(trackToSave));
+        return Task.CompletedTask;
+    }
+
+
+
+private Task HandleSave()
+    {
+        if (!IsValid())
+        {
+            ShowValidationErrors();
+            return Task.CompletedTask;
+        }
+
+        return SubmitForm();
+    }
+
+    private void Cancel() => MudDialog?.Close(DialogResult.Cancel());
+}
+

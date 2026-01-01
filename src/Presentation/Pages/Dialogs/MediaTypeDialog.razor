@@ -1,0 +1,94 @@
+@using Application.DTOs
+@using Presentation.Shared
+@inject ISnackbar Snackbar
+
+<MudDialogProvider />
+<MudDialog>
+    <DialogContent>
+        <MudContainer MaxWidth="MaxWidth.Small" Class="pa-4">
+            <EditForm Model="MediaTypeModel" OnValidSubmit="SubmitForm">
+                <DataAnnotationsValidator />
+                <MudTextField @bind-Value="MediaTypeModel.Name"
+                                Label="Name"
+                                Required="true"
+                                RequiredError="Please enter a Name"
+                                Class="mb-4" />
+
+                <DialogActions OnCancel="Cancel" 
+                               OnSave="HandleSave"
+                               IsEditing="IsEditing" 
+                               IsDisabled="false" />
+            </EditForm>
+        </MudContainer>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance? MudDialog { get; set; }
+        [Parameter] public bool IsEditing { get; set; }
+    [Parameter] public MediaTypeDto? MediaType { get; set; }
+
+
+    private MediaTypeDto? MediaTypeModel { get; set; }  = new();
+
+    protected override void OnInitialized()
+    {
+        if (!IsEditing || MediaType == null) return;
+        MediaTypeModel = new MediaTypeDto
+        {
+            MediaTypeId = MediaType.MediaTypeId,
+            Name = MediaType.Name,
+        };
+
+    }
+        
+
+ 
+
+    private bool IsValid() =>
+        true;
+
+    private void ShowValidationErrors()
+    {
+        var errors = new List<string>();
+        
+        if (errors.Any())
+        {
+            var errorMessage = string.Join(", ", errors);
+            Snackbar.Add($"Validation failed: {errorMessage}", Severity.Error);
+        }
+    }
+
+         
+    private Task SubmitForm()
+    {
+        if (!IsValid())
+            return Task.CompletedTask;
+    
+        var mediatypeToSave = new MediaTypeDto
+        {
+            MediaTypeId = IsEditing ? MediaTypeModel.MediaTypeId : 0,
+            Name = MediaTypeModel!.Name
+        };
+    
+        MudDialog?.Close(DialogResult.Ok(mediatypeToSave));
+        return Task.CompletedTask;
+    }
+
+
+
+private Task HandleSave()
+    {
+        if (!IsValid())
+        {
+            ShowValidationErrors();
+            return Task.CompletedTask;
+        }
+
+        return SubmitForm();
+    }
+
+    private void Cancel() => MudDialog?.Close(DialogResult.Cancel());
+}
+
