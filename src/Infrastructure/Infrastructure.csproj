@@ -10,14 +10,6 @@
     <Compile Remove="Data\AuthenticationContext.cs" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="appsettings.Development.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-  </ItemGroup>
-
 
 	<PropertyGroup>
 		<RootNamespace>Infrastructure</RootNamespace>

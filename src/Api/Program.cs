@@ -32,6 +32,7 @@ builder.Services.AddHttpClient();
 
 // Add other services
 builder.Services.AddControllers();
+//builder.Services.AddRazorPages();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -103,6 +104,7 @@ builder.Services.AddAuthentication(options =>
         };
     });
 
+
 // Add AutoMapper
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
@@ -110,6 +112,7 @@ builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddScoped<IValidator<UserDto>, UserDtoValidator>();
 builder.Services.AddValidatorsFromAssemblyContaining<UserDtoValidator>();
+
 
 var app = builder.Build();
 
@@ -121,14 +124,22 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+app.UseStaticFiles();
 // Add CORS before other middleware
 app.UseCors("AllowAll");
+
+//app.UseHttpsRedirection();
+
+app.UseBlazorFrameworkFiles();
+
+app.UseStaticFiles();
 
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+//app.MapGet("/api/test", () => Results.Json(new { message = "API is working!" }));
 
+app.MapFallbackToFile("index.html");
 app.Run();
 
