@@ -28,5 +28,22 @@
 
   </ItemGroup>
 
+	<!-- Publish the Blazor WASM Presentation into the API wwwroot when publishing the API -->
+	<Target Name="PublishPresentationIntoApiWwwroot" AfterTargets="Publish">
+		<PropertyGroup>
+			<!-- Path to the Presentation project file (adjust if your layout differs) -->
+			<PresentationProject>..\Presentation\Presentation.csproj</PresentationProject>
+			<!-- Output directory: API's wwwroot -->
+			<ApiWwwRoot>$(ProjectDir)wwwroot\</ApiWwwRoot>
+		</PropertyGroup>
+
+		<!-- Ensure output directory exists -->
+		<MakeDir Directories="$(ApiWwwRoot)" />
+
+		<!-- Publish presentation project directly into api wwwroot -->
+		<Exec Command="dotnet publish &quot;$(PresentationProject)&quot; -c $(Configuration) -f net9.0 -o &quot;$(ApiWwwRoot)&quot;" />
+	</Target>
+
+
 </Project>
 

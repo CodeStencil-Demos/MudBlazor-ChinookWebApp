@@ -130,11 +130,14 @@ app.UseCors("AllowAll");
 
 //app.UseHttpsRedirection();
 
+
+app.UseRouting();
+
+
 app.UseBlazorFrameworkFiles();
 
 app.UseStaticFiles();
 
-app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
