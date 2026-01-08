@@ -5,7 +5,7 @@ namespace Application.Mapping
 
         public InvoiceLineProfile() 
         {
-            CreateMap<InvoiceLineDto, InvoiceLine>();
+            CreateMap<InvoiceLine, InvoiceLineDto>();
 
         }    
     }

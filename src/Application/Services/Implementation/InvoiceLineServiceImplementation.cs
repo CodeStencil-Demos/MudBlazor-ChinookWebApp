@@ -53,6 +53,19 @@ namespace Application.Services.Implementation
             };
         }
 
+        // Search
+
+        //public async Task<IEnumerable<InvoiceLineDto>> SearchAsync(string searchTerm)
+        //{
+        //    if (string.IsNullOrWhiteSpace(searchTerm))
+        //    {
+        //        throw new ArgumentException("Search term cannot be null or empty", nameof(searchTerm));
+        //    }
+
+        //    var invoicelines = await _invoicelineRepository.SearchAsync(searchTerm);
+        //    return _mapper.Map<IEnumerable<InvoiceLineDto>>(invoicelines);
+        //}
+
         //Create
         public async Task<InvoiceLineDto> CreateAsync(InvoiceLineDto invoicelineDto)
         {

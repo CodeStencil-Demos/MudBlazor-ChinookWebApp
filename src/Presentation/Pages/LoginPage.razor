@@ -23,6 +23,14 @@
                     Enter your credentials to login
                 </MudText>
 
+                <div class="text-center mb-4">
+                    <MudText Typo="Typo.body2" Class="text-gray-600">
+                        These are the login Credentials: <br/>
+                        Login: test <br/>
+                        Password: Pas5_word
+                    </MudText>
+                </div>
+
                 <MudForm @ref="_form" @bind-IsValid="_success">
                     <MudTextField T="string"
                                   Label="Username"

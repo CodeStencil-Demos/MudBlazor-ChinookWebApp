@@ -12,8 +12,13 @@ namespace Infrastructure.Repositories
         //Search
         public async Task<IEnumerable<AlbumView>> SearchAsync(string searchTerm)
         {
-            // No searchable columns specified for this view
-            throw new NotImplementedException();
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                throw new ArgumentException("Search term cannot be null or empty", nameof(searchTerm));
+            }
+            return await context.AlbumViews
+                .Where(av => av.Title.Contains(searchTerm))
+                .ToListAsync();
         }
 
 
